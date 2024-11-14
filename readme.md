@@ -6,7 +6,7 @@
 ---
 
 # Table of Contents
-1.[HistoriX - Command History Analyzer](#Introduction)
+1.[Introduction](#HistoriX-CommandHistoryAnalyzer)
 
 2.[Features](#Features)
 
@@ -62,3 +62,38 @@
 ## Installing Dependencies
 To install the required dependencies, use the following commands:
 
+**On Ubuntu/Debian-based systems:**
+```bash
+sudo apt update
+sudo apt install gnuplot parallel
+```
+
+**On Fedora/RHEL-based systems:**
+```bash
+sudo dnf install gnuplot parallel
+```
+
+**On Archlinux-based systems:**
+```bash
+sudo pacman -S gnuplot parallel
+```
+
+# Download and Setup
+1.**Clone the repository or download the script manually**.
+
+```bash
+git clone https://github.com/intrepidDev101/HistoriX.git
+cd HistoriX
+```
+
+2.**Make the script executable**:
+
+```bash
+chmod +x history_analyzer.sh
+```
+
+3.**Run the script**:
+
+```bash
+./history_analyzer.sh
+```
