@@ -2,7 +2,7 @@
 
 # HistoriX - Optimized Command History Analyzer
 # Author: intrepidDev101
-# Version: 1.1
+# Version: 1.3
 
 # Configuration
 HISTORY_FILE="$HOME/.bash_history"
