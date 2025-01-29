@@ -255,5 +255,5 @@ git push origin new-feature
 
 # Contact
 For any questions or suggestions, feel free to reach out to the author at:
-[fluxNest@protonmail.com](#ProtonMail)
+[fluxNest@proton.me](#ProtonMail)
 
