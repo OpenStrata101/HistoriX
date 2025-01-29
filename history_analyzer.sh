@@ -10,6 +10,22 @@ TEMP_FILE="/tmp/frequency_data.txt"
 TIME_OF_DAY_FILE="/tmp/time_of_day.txt"
 LOG_FILE="/tmp/command_analyzer.log"
 
+# Function to display ASCII art with 256 colors
+display_ascii_art() {
+    echo -e "\033[38;5;44m██╗  ██╗██╗███████╗████████╗ ██████╗ ██████╗ ██╗██╗  ██╗\033[0m"
+    echo -e "\033[38;5;45m██║  ██║██║██╔════╝╚══██╔══╝██╔═══██╗██╔══██╗██║╚██╗██╔╝\033[0m"
+    echo -e "\033[38;5;46m███████║██║███████╗   ██║   ██║   ██║██████╔╝██║ ╚███╔╝ \033[0m"
+    echo -e "\033[38;5;47m██╔══██║██║╚════██║   ██║   ██║   ██║██╔══██╗██║ ██╔██╗ \033[0m"
+    echo -e "\033[38;5;48m██║  ██║██║███████║   ██║   ╚██████╔╝██║  ██║██║██╔╝ ██╗\033[0m"
+    echo -e "\033[38;5;49m╚═╝  ╚═╝╚═╝╚══════╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚═╝╚═╝  ╚═╝\033[0m"
+    echo ""
+}
+
+# Function to clear the terminal
+clear_terminal() {
+    clear
+}
+
 # Colors
 declare -A COLORS=( ["RED"]="\033[0;31m" ["GREEN"]="\033[0;32m" ["YELLOW"]="\033[0;33m" ["CYAN"]="\033[0;36m" ["MAGENTA"]="\033[0;35m" ["RESET"]="\033[0m" )
 colorize() { echo -e "${COLORS[$1]}$2${COLORS[RESET]}"; }
@@ -138,4 +154,7 @@ menu() {
     done
 }
 
+# Start menu
+clear_terminal
+display_ascii_art
 menu
