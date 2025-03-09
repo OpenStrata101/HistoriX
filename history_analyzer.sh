@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# HistoriX - Optimized Command History Analyzer
+# HistoriX - Advanced Command History Analyzer
 # Author: intrepidDev101
-# Version: 1.3
+# Version: 2.0
 
 # Configuration
 HISTORY_FILE="$HOME/.bash_history"
@@ -35,18 +35,12 @@ analyze_frequency() {
     awk '{print $1}' "$HISTORY_FILE" | sort | uniq -c | sort -nr
 }
 
-# Helper: Display Top N Results
-display_top_n() {
-    local title="$1"
-    local color="$2"
-    local count="$3"
-    colorize "$color" "$title"
-    analyze_frequency | head -n "$count" | awk -v color="${COLORS[GREEN]}" '{printf "%s[%d] %s%s\n", color, $1, $2, "\033[0m"}'
+# Most Frequent Commands
+show_frequent() {
+    colorize "CYAN" "Most Frequent Commands:"
+    analyze_frequency | head -n 10 | awk -v color="${COLORS[GREEN]}" '{printf "%s[%d] %s%s\n", color, $1, $2, "\033[0m"}'
     echo ""
 }
-
-# Most Frequent Commands
-show_frequent() { display_top_n "Most Frequent Commands:" "CYAN" 10; }
 
 # Commands with `sudo`
 show_sudo() {
@@ -62,10 +56,10 @@ show_unique() {
     echo ""
 }
 
-# Dangerous Commands
+# Potentially Dangerous Commands
 show_dangerous() {
     colorize "CYAN" "Potentially Dangerous Commands:"
-    grep -E 'rm|mv|dd|shutdown|reboot|mkfs' "$HISTORY_FILE" | sort | uniq | awk '{printf "%s%s%s\n", "\033[0;31m", $0, "\033[0m"}'
+    grep -E '\<(rm|mv|dd|shutdown|reboot|mkfs)\>' "$HISTORY_FILE" | sort | uniq | awk '{printf "%s%s%s\n", "\033[0;31m", $0, "\033[0m"}'
     echo ""
 }
 
@@ -76,9 +70,13 @@ show_total() {
     echo ""
 }
 
-# Generate Command Usage Visualization
+# Generate Visualization (Frequency Chart)
 generate_visualization() {
     analyze_frequency | head -n 10 | awk '{print $2, $1}' > "$TEMP_FILE"
+    if ! command -v gnuplot &> /dev/null; then
+        colorize "RED" "Error: GNUplot is not installed!"
+        return
+    fi
     gnuplot -e "
         set terminal png size 800,600;
         set output '/tmp/command_usage.png';
@@ -86,21 +84,30 @@ generate_visualization() {
         set xlabel 'Command';
         set ylabel 'Frequency';
         set xtics rotate by -45;
-        plot '/tmp/frequency_data.txt' using 2:xtic(1) with boxes notitle;
+        plot '$TEMP_FILE' using 2:xtic(1) with boxes notitle;
     "
     colorize "CYAN" "Visualization saved to /tmp/command_usage.png"
 }
 
-# Analyze Time-of-Day Usage
+# Time-of-Day Analysis
 analyze_time_of_day() {
-    awk '{print $1}' "$HISTORY_FILE" | sort | uniq -c > "$TIME_OF_DAY_FILE"
+    if ! grep -q "^[0-9]" "$HISTORY_FILE"; then
+        colorize "RED" "Error: Timestamps not found in history file!"
+        return
+    fi
+    awk '{if ($0 ~ /^[0-9]+/) {ts=$1; cmd=substr($0, index($0,$2))} else {cmd=$0} print ts, cmd}' "$HISTORY_FILE" |
+    awk '{print strftime("%H:%M", $1), $2}' | sort | uniq -c > "$TIME_OF_DAY_FILE"
+    if ! command -v gnuplot &> /dev/null; then
+        colorize "RED" "Error: GNUplot is not installed!"
+        return
+    fi
     gnuplot -e "
         set terminal png size 800,600;
         set output '/tmp/time_of_day.png';
         set title 'Command Usage by Time';
         set xlabel 'Time of Day';
         set ylabel 'Frequency';
-        plot '/tmp/time_of_day.txt' using 1:2 with lines;
+        plot '$TIME_OF_DAY_FILE' using 2:xtic(1) with lines;
     "
     colorize "CYAN" "Time-of-Day Analysis Chart saved to /tmp/time_of_day.png"
 }
@@ -134,10 +141,123 @@ export_results() {
     esac
 }
 
+# Filter by Date
+filter_by_date() {
+    read -p "Enter start date (YYYY-MM-DD): " start_date
+    read -p "Enter end date (YYYY-MM-DD): " end_date
+    if ! grep -q "^[0-9]" "$HISTORY_FILE"; then
+        colorize "RED" "Error: Timestamps not found in history file!"
+        return
+    fi
+    awk -v start="$start_date" -v end="$end_date" '
+        /^[0-9]+/ {
+            ts=strftime("%Y-%m-%d", $1);
+            if (ts >= start && ts <= end) {
+                print $0
+            }
+        }' "$HISTORY_FILE"
+}
+
+# Group/Tag Commands
+group_commands() {
+    colorize "CYAN" "Grouping Commands by Patterns:"
+    declare -A groups=( ["git"]="git" ["docker"]="docker" ["python"]="python" ["ssh"]="ssh" )
+    for group in "${!groups[@]}"; do
+        echo "$group commands:"
+        grep -E "^${groups[$group]}" "$HISTORY_FILE" | sort | uniq
+        echo ""
+    done
+}
+
+# Clean History File
+clean_history() {
+    read -p "Are you sure you want to clean sensitive data from history? (y/n): " confirm
+    if [[ "$confirm" == "y" ]]; then
+        sed -i '/password/d; /token/d; /secret/d' "$HISTORY_FILE"
+        colorize "GREEN" "Sensitive data cleaned from history."
+    else
+        colorize "YELLOW" "Operation canceled."
+    fi
+}
+
+# Execution Statistics
+execution_statistics() {
+    colorize "CYAN" "Execution Statistics:"
+    if ! grep -q "^[0-9]" "$HISTORY_FILE"; then
+        colorize "RED" "Error: Timestamps not found in history file!"
+        return
+    fi
+    awk '{if ($0 ~ /^[0-9]+/) {ts=$1; cmd=substr($0, index($0,$2))} else {cmd=$0} print ts, cmd}' "$HISTORY_FILE" |
+    awk 'BEGIN {prev=0; count=0} {
+        if (NR > 1) {
+            diff = $1 - prev;
+            printf "[%d seconds] %s\n", diff, $2;
+        }
+        prev = $1;
+    }'
+}
+
+# Detect Frequent Combinations
+detect_combinations() {
+    colorize "CYAN" "Frequent Command Combinations:"
+    awk '{for (i=1; i<=NF; i++) {combo=combo $i " "} print combo; combo=""}' "$HISTORY_FILE" |
+    sort | uniq -c | sort -nr | head -n 10 | awk '{printf "[%d] %s\n", $1, $2}'
+}
+
+# Send Alerts
+send_alerts() {
+    colorize "CYAN" "Setting Up Alerts for Dangerous Commands:"
+    read -p "Enter email address for alerts: " email
+    while true; do
+        sleep 10
+        tail -n 1 "$HISTORY_FILE" | grep -E '\<(rm|sudo)\>' && echo "Dangerous command detected!" | mail -s "Alert: Dangerous Command" "$email"
+    done
+}
+
+# Process in Parallel
+process_parallel() {
+    if ! command -v parallel &> /dev/null; then
+        colorize "RED" "Error: GNU Parallel is not installed!"
+        return
+    fi
+    colorize "CYAN" "Processing History in Parallel:"
+    cat "$HISTORY_FILE" | parallel --jobs 4 echo {}
+}
+
+# Track Real-time Commands
+track_realtime() {
+    colorize "CYAN" "Tracking Real-time Commands (Ctrl+C to stop):"
+    tail -f "$HISTORY_FILE"
+}
+
+# User-Specific Analysis
+user_specific_analysis() {
+    colorize "CYAN" "Analyzing Commands for Current User:"
+    whoami
+    grep "$(whoami)" "$HISTORY_FILE" | sort | uniq -c | sort -nr
+}
+
 # Main Menu
 menu() {
     PS3="Select an option: "
-    select option in "Most Frequent Commands" "Commands with sudo" "Unique Commands" "Dangerous Commands" "Total Commands" "Generate Visualization" "Suggestions" "Export Results" "Time-of-Day Analysis" "Exit"; do
+    select option in \
+        "Most Frequent Commands" \
+        "Commands with sudo" \
+        "Unique Commands" \
+        "Dangerous Commands" \
+        "Total Commands" \
+        "Generate Visualization" \
+        "Filter by Date" \
+        "Group/Tag Commands" \
+        "Clean History File" \
+        "Export Results" \
+        "Execution Statistics" \
+        "Detect Frequent Combinations" \
+        "Send Alerts" \
+        "Process in Parallel" \
+        "Track Real-time Commands" \
+        "User-Specific Analysis" \
+        "Exit"; do
         case $option in
             "Most Frequent Commands") show_frequent ;;
             "Commands with sudo") show_sudo ;;
@@ -145,9 +265,16 @@ menu() {
             "Dangerous Commands") show_dangerous ;;
             "Total Commands") show_total ;;
             "Generate Visualization") generate_visualization ;;
-            "Suggestions") give_suggestions ;;
+            "Filter by Date") filter_by_date ;;
+            "Group/Tag Commands") group_commands ;;
+            "Clean History File") clean_history ;;
             "Export Results") export_results ;;
-            "Time-of-Day Analysis") analyze_time_of_day ;;
+            "Execution Statistics") execution_statistics ;;
+            "Detect Frequent Combinations") detect_combinations ;;
+            "Send Alerts") send_alerts ;;
+            "Process in Parallel") process_parallel ;;
+            "Track Real-time Commands") track_realtime ;;
+            "User-Specific Analysis") user_specific_analysis ;;
             "Exit") exit 0 ;;
             *) colorize "RED" "Invalid option!" ;;
         esac
