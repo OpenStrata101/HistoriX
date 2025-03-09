@@ -81,7 +81,7 @@ sudo pacman -S gnuplot parallel
 1.**Clone the repository or download the script manually**.
 
 ```bash
-git clone https://github.com/intrepidDev101/HistoriX.git
+git clone https://github.com/Openstrata/HistoriX.git
 cd HistoriX
 ```
 
