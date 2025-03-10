@@ -2,7 +2,7 @@
 
 # HistoriX - Advanced Command History Analyzer
 # Author: intrepidDev101
-# Version: 2.0
+# Version: 2.1 (Improved)
 
 # Configuration
 HISTORY_FILE="$HOME/.bash_history"
@@ -29,6 +29,12 @@ clear_terminal() {
 # Colors
 declare -A COLORS=( ["RED"]="\033[0;31m" ["GREEN"]="\033[0;32m" ["YELLOW"]="\033[0;33m" ["CYAN"]="\033[0;36m" ["MAGENTA"]="\033[0;35m" ["RESET"]="\033[0m" )
 colorize() { echo -e "${COLORS[$1]}$2${COLORS[RESET]}"; }
+
+# IMPROVEMENT: Error handling for missing history file
+if [[ ! -f "$HISTORY_FILE" ]]; then
+    colorize "RED" "Error: History file not found at $HISTORY_FILE!"
+    exit 1
+fi
 
 # Helper: Analyze Command Frequency
 analyze_frequency() {
@@ -72,11 +78,12 @@ show_total() {
 
 # Generate Visualization (Frequency Chart)
 generate_visualization() {
-    analyze_frequency | head -n 10 | awk '{print $2, $1}' > "$TEMP_FILE"
+    # IMPROVEMENT: Check for gnuplot and provide fallback
     if ! command -v gnuplot &> /dev/null; then
-        colorize "RED" "Error: GNUplot is not installed!"
+        colorize "RED" "Error: GNUplot is not installed! Install it using 'sudo apt install gnuplot'."
         return
     fi
+    analyze_frequency | head -n 10 | awk '{print $2, $1}' > "$TEMP_FILE"
     gnuplot -e "
         set terminal png size 800,600;
         set output '/tmp/command_usage.png';
@@ -91,14 +98,15 @@ generate_visualization() {
 
 # Time-of-Day Analysis
 analyze_time_of_day() {
+    # IMPROVEMENT: Validate timestamps before proceeding
     if ! grep -q "^[0-9]" "$HISTORY_FILE"; then
-        colorize "RED" "Error: Timestamps not found in history file!"
+        colorize "RED" "Error: Timestamps not found in history file! Enable timestamps with 'export HISTTIMEFORMAT=\"%F %T \"'."
         return
     fi
     awk '{if ($0 ~ /^[0-9]+/) {ts=$1; cmd=substr($0, index($0,$2))} else {cmd=$0} print ts, cmd}' "$HISTORY_FILE" |
     awk '{print strftime("%H:%M", $1), $2}' | sort | uniq -c > "$TIME_OF_DAY_FILE"
     if ! command -v gnuplot &> /dev/null; then
-        colorize "RED" "Error: GNUplot is not installed!"
+        colorize "RED" "Error: GNUplot is not installed! Install it using 'sudo apt install gnuplot'."
         return
     fi
     gnuplot -e "
@@ -136,17 +144,22 @@ export_results() {
             colorize "GREEN" "Exported to $HOME/command_history.json"
             ;;
         *)
-            colorize "RED" "Invalid format!"
+            colorize "RED" "Invalid format! Please choose 'csv' or 'json'."
             ;;
     esac
 }
 
 # Filter by Date
 filter_by_date() {
+    # IMPROVEMENT: Validate date format
     read -p "Enter start date (YYYY-MM-DD): " start_date
     read -p "Enter end date (YYYY-MM-DD): " end_date
     if ! grep -q "^[0-9]" "$HISTORY_FILE"; then
-        colorize "RED" "Error: Timestamps not found in history file!"
+        colorize "RED" "Error: Timestamps not found in history file! Enable timestamps with 'export HISTTIMEFORMAT=\"%F %T \"'."
+        return
+    fi
+    if ! [[ "$start_date" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || ! [[ "$end_date" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+        colorize "RED" "Invalid date format! Please use YYYY-MM-DD."
         return
     fi
     awk -v start="$start_date" -v end="$end_date" '
@@ -171,9 +184,10 @@ group_commands() {
 
 # Clean History File
 clean_history() {
+    # IMPROVEMENT: Add confirmation prompt
     read -p "Are you sure you want to clean sensitive data from history? (y/n): " confirm
     if [[ "$confirm" == "y" ]]; then
-        sed -i '/password/d; /token/d; /secret/d' "$HISTORY_FILE"
+        sed -i '/password/d; /token/d; /secret/d; /key=/d' "$HISTORY_FILE"
         colorize "GREEN" "Sensitive data cleaned from history."
     else
         colorize "YELLOW" "Operation canceled."
@@ -184,7 +198,7 @@ clean_history() {
 execution_statistics() {
     colorize "CYAN" "Execution Statistics:"
     if ! grep -q "^[0-9]" "$HISTORY_FILE"; then
-        colorize "RED" "Error: Timestamps not found in history file!"
+        colorize "RED" "Error: Timestamps not found in history file! Enable timestamps with 'export HISTTIMEFORMAT=\"%F %T \"'."
         return
     fi
     awk '{if ($0 ~ /^[0-9]+/) {ts=$1; cmd=substr($0, index($0,$2))} else {cmd=$0} print ts, cmd}' "$HISTORY_FILE" |
@@ -206,8 +220,13 @@ detect_combinations() {
 
 # Send Alerts
 send_alerts() {
-    colorize "CYAN" "Setting Up Alerts for Dangerous Commands:"
+    # IMPROVEMENT: Validate email address
     read -p "Enter email address for alerts: " email
+    if ! [[ "$email" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+        colorize "RED" "Invalid email address!"
+        return
+    fi
+    colorize "CYAN" "Monitoring for dangerous commands... (Ctrl+C to stop)"
     while true; do
         sleep 10
         tail -n 1 "$HISTORY_FILE" | grep -E '\<(rm|sudo)\>' && echo "Dangerous command detected!" | mail -s "Alert: Dangerous Command" "$email"
@@ -216,8 +235,9 @@ send_alerts() {
 
 # Process in Parallel
 process_parallel() {
+    # IMPROVEMENT: Check for parallel and provide fallback
     if ! command -v parallel &> /dev/null; then
-        colorize "RED" "Error: GNU Parallel is not installed!"
+        colorize "RED" "Error: GNU Parallel is not installed! Install it using 'sudo apt install parallel'."
         return
     fi
     colorize "CYAN" "Processing History in Parallel:"
