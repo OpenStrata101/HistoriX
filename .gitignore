@@ -1,0 +1,19 @@
+# Temporary files
+*.swp
+*.log
+*.tmp
+
+# Generated files
+/tmp/*
+!/tmp/.gitkeep
+historix/logs/*
+!historix/logs/.gitkeep
+historix/logs/archived/*
+
+# Python artifacts
+__pycache__/
+*.pyc
+
+# Build artifacts
+*.zip
+*.tar.gz
