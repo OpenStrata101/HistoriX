@@ -156,7 +156,7 @@ pip3 install pandas scikit-learn nltk
 ## **Setup Script**
 **1.Clone the repository:**
 ```bash
-git clone https://github.com/your-repo/historix.git
+git clone https://github.com/coder-0xffc/historix.git
 cd historix
 ```
 **2.Make the setup script executable:**
@@ -343,4 +343,4 @@ This project is licensed under the MIT License . See the [LICENSE](LICENSE) file
 
 ## **Acknowledgments**
 Inspired by tools like `history` and `htop`.
-Built with ❤️ by Openstrata101 .
+Built with ❤️ by coder_0x .
